@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UsersService } from "@/client/sdk.gen";
+import { UsersService } from "@/client";
 import { Button } from "./Button";
 
 function handleRefresh() {

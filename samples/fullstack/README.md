@@ -8,7 +8,7 @@ Planted cases:
 - functions the framework calls, not the code: FastAPI dependencies (`Depends(get_db)`), a Pydantic computed field, a function passed as an argument, a `__main__` entry point and Alembic migrations;
 - a method called through `self`;
 - React components used as JSX, and a handler passed as a prop;
-- imports through a tsconfig path alias (`@/...`);
+- imports through a tsconfig path alias (`@/...`), including a barrel file that re-exports the SDK;
 - a generated API client that calls the backend by relative URL;
 - services reached through SDKs and config, not URLs: Postgres (compose image and connection string), SMTP (`emails`) and Sentry (`sentry_sdk`);
 - three genuinely unused functions.
