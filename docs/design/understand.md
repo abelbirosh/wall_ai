@@ -52,12 +52,28 @@ The first wall_ai component. It builds a model of a target system's structure, d
 
 eBPF tools need a Linux kernel, so local development on macOS needs a Linux VM (Lima or Colima). gVisor is not used because its syscall layer hides the app from eBPF.
 
+#### Built so far (v1: Python)
+
+Targets are treated as untrusted, including the user's own code.
+
+- **Sandbox:** a Lima VM in plain mode (no host mounts or port forwarding) on macOS; on CI, the throwaway runner VM. Firecracker comes later.
+- **Isolation:**
+  - the target runs as an unprivileged user;
+  - dependencies are installed from prebuilt wheels only, so no build scripts run;
+  - after install, the user's network is cut to loopback only, and a probe confirms it.
+- **Egress:** outbound HTTP goes through mitmproxy, which logs host, method and path (never queries, headers or bodies) and returns a mock response. `--allow-host` lets named hosts through for real.
+- **Instrumentation:**
+  - OpenTelemetry auto-instrumentation records server and client spans, and client spans are tagged with the calling function.
+  - wall_ai's `sys.monitoring` tracer records caller→callee pairs with counts.
+- **Traffic:** deterministic. One request per endpoint, from the static model plus the published OpenAPI spec (bodies from examples or schemas), then the target's own pytest suite.
+- **Not yet:** TypeScript, OBI and Tetragon, Firecracker, Keploy replay, Locust load, LLM-guided traffic.
+
 ### System model
 
 One graph.
 
 - **Nodes:** files, modules, functions, packages, endpoints the target exposes, external services and hosts.
-- **Links:** `imports`, `calls`, `depends_on`, `exposes`, `talks_to`.
+- **Links:** `contains`, `imports`, `calls`, `depends_on`, `exposes`, `handled_by`, `talks_to`. Links can carry attributes, such as how many times a link was observed.
 - **Evidence:** every link records how it is known: `static` (found in code), `observed` (seen at runtime) or `inferred` (suggested by an LLM), plus a pointer to its source.
 
 Comparing static and observed links separates:
@@ -93,4 +109,3 @@ Comparing static and observed links separates:
 - Does "usage patterns" also cover how end users use the software (product analytics), or only runtime behavior?
 - What form do targets usually come in: container images, Kubernetes manifests or plain repos?
 - Are browser front-ends in scope for v1? They would need Playwright to drive them.
-- What is the sandbox's default for outbound calls: block, mock or allow?
