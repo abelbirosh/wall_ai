@@ -96,7 +96,7 @@ def _resolve(
         if name in local:
             return f"function:{rel}:{name}"
         imp = bindings.get(name)
-        if imp and imp.file and imp.symbol and imp.symbol != "default":
+        if imp and imp.file and imp.symbol:  # "default" resolves through `export default X`
             file, symbol = _defining(imp.file, imp.symbol, all_facts)
             return f"function:{file}:{symbol}"
         return None

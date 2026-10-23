@@ -40,8 +40,8 @@ def extract(source: bytes, ctx: Context) -> FileFacts:
         if node.type == "export_statement" and node.child_by_field_name("source"):
             facts.reexports.extend(_reexports(node, ctx))
             continue
-        if node.type == "export_statement" and node.child_by_field_name("declaration"):
-            node = node.child_by_field_name("declaration")
+        if node.type == "export_statement":
+            node = _unwrap_export(facts, node, ctx)
         if node.type == "function_declaration":
             _add_function(facts, node, _text(node.child_by_field_name("name")))
         elif node.type == "class_declaration":
@@ -55,6 +55,21 @@ def extract(source: bytes, ctx: Context) -> FileFacts:
         else:
             _scan(facts, node, MODULE)
     return facts
+
+
+def _unwrap_export(facts: FileFacts, node: Node, ctx: Context) -> Node:
+    """Return the exported declaration; record what `export default` points to."""
+    is_default = any(c.type == "default" for c in node.children)
+    declaration = node.child_by_field_name("declaration")
+    if declaration is not None:
+        name = declaration.child_by_field_name("name")
+        if is_default and name is not None:
+            facts.reexports.append(("default", _text(name), ctx.rel_path))
+        return declaration
+    value = node.child_by_field_name("value")
+    if is_default and value is not None and value.type == "identifier":
+        facts.reexports.append(("default", _text(value), ctx.rel_path))
+    return node
 
 
 def _add_declarations(facts: FileFacts, node: Node) -> None:
