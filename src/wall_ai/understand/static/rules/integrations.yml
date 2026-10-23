@@ -1,18 +1,7 @@
 # wall_ai's own rules for routes a target exposes and HTTP calls it makes.
+# FastAPI routes are found by static/frameworks/fastapi.py, which also resolves prefixes.
 # Kept in-repo on purpose: Semgrep's registry rules carry a restrictive license.
 rules:
-  - id: route.python.fastapi
-    languages: [python]
-    severity: INFO
-    message: "$METHOD $PATH $FUNC $APP"
-    patterns:
-      - pattern: |
-          @$APP.$METHOD("$PATH", ...)
-          def $FUNC(...): ...
-      - metavariable-regex:
-          metavariable: $METHOD
-          regex: ^(get|post|put|patch|delete)$
-
   - id: route.js.express
     languages: [typescript, javascript]
     severity: INFO

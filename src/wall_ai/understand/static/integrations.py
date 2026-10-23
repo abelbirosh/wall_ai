@@ -46,10 +46,6 @@ def add_integrations(
         model.add_node(endpoint, "endpoint", method=method, path=path)
         model.add_edge(f"component:{component.name}", endpoint, "exposes", Evidence.STATIC, source)
         handler = func[0] if func else f"<{method} {path}>"
-        if len(func) > 1:  # FastAPI: record the ASGI app so the runtime pipeline can serve it
-            module = Path(r["path"]).relative_to(component.rel).with_suffix("")
-            asgi_app = f"{'.'.join(module.parts)}:{func[1]}"
-            model.add_node(f"component:{component.name}", "component", asgi_app=asgi_app)
         handler_id = f"function:{r['path']}:{handler}"
         if any(n.id == handler_id for n in model.nodes("function")):
             model.add_edge(endpoint, handler_id, "handled_by", Evidence.STATIC, source)
