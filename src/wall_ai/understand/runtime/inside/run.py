@@ -29,6 +29,9 @@ TOOLS = Path("/opt/wallai")
 PROXY_PORT = 8080
 PYTHON_VERSION = "3.12"  # sys.monitoring, used by the call tracer, needs 3.12+
 OTEL_PACKAGES = ["opentelemetry-distro"]
+# Overlapping instrumentations double spans (fastapi+starlette, httpx+httpx2), and click wraps
+# uvicorn's whole command in one span, which makes every request look nested and INTERNAL.
+OTEL_DISABLED = "click,starlette,httpx2,asyncio,threading,logging,exceptions"
 
 steps: list[dict] = []
 
@@ -216,6 +219,7 @@ def target_env(comp: dict, process: str) -> dict:
         "OTEL_TRACES_EXPORTER": "none",
         "OTEL_METRICS_EXPORTER": "none",
         "OTEL_LOGS_EXPORTER": "none",
+        "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS": OTEL_DISABLED,
     }
 
 
