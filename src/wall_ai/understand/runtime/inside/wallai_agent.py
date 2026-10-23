@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import threading
+import time
 from collections import Counter
 
 ROOT = os.environ.get("WALLAI_ROOT", "")
@@ -22,12 +23,20 @@ _runs: Counter = Counter()
 _lock = threading.Lock()
 
 
+_started = False
+
+
 def start() -> None:
-    if not OUT or not ROOT or sys.version_info < (3, 12):
+    # Venvs often link lib64 -> lib, so site processes this .pth twice; start only once.
+    global _started
+    if _started or not OUT or not ROOT or sys.version_info < (3, 12):
         return
+    _started = True
     _start_call_tracer()
     _start_tracing()
     atexit.register(_write_calls)
+    # Servers may exit by re-raising a signal, which skips atexit; keep a recent snapshot too.
+    threading.Thread(target=_snapshot_loop, daemon=True, name="wallai-snapshot").start()
 
 
 # --- call tracer -------------------------------------------------------------------------
@@ -77,13 +86,22 @@ def _start_call_tracer() -> None:
     mon.set_events(tool, mon.events.PY_START)
 
 
+def _snapshot_loop() -> None:
+    while True:
+        time.sleep(0.5)
+        _write_calls()
+
+
 def _write_calls() -> None:
-    data = {
-        "functions": dict(_runs),
-        "calls": [[caller, callee, n] for (caller, callee), n in _calls.items()],
-    }
-    with open(os.path.join(OUT, f"calls-{os.getpid()}.json"), "w") as f:
-        json.dump(data, f)
+    with _lock:
+        data = {
+            "functions": dict(_runs),
+            "calls": [[caller, callee, n] for (caller, callee), n in list(_calls.items())],
+        }
+        path = os.path.join(OUT, f"calls-{os.getpid()}.json")
+        with open(path + ".tmp", "w") as f:
+            json.dump(data, f)
+        os.replace(path + ".tmp", path)
 
 
 # --- spans -------------------------------------------------------------------------------
