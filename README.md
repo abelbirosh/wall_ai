@@ -10,3 +10,4 @@ Design: [Understand component](docs/design/understand.md)
 | 2026-10-22 | #2 | Design doc only, no code | Scaffold the Python project with lint and test CI | uv project with ruff and pytest; CI runs both on every PR | Open |
 | 2026-10-22 | #3 | Project scaffold with nothing to analyze | Add the shopfront sample target with ground truth | Two-service sample (FastAPI + Express) in `samples/shopfront` with `expected.json` | Open |
 | 2026-10-22 | #4 | Sample target but no system model | Add the system model, unit tests first | `SystemModel` graph with evidence-tagged links; 8 unit tests | Open |
+| 2026-10-22 | #5 | System model with nothing feeding it | Add the static pipeline and `wall-ai understand` | cdxgen, tree-sitter and Semgrep build the model; functional tests match the sample ground truth | Open |
