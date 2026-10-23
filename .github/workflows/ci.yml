@@ -16,6 +16,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      # Each GitHub runner is a throwaway VM, so it serves as the sandbox for runtime tests.
+      WALL_AI_EPHEMERAL: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
