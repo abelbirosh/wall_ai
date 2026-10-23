@@ -14,6 +14,7 @@ from wall_ai.understand.static.components import (
 from wall_ai.understand.static.structure import python, typescript
 from wall_ai.understand.static.structure.conventions import console_scripts, entry_point
 from wall_ai.understand.static.structure.facts import MODULE, Call, Context, FileFacts, Import
+from wall_ai.understand.static.structure.tsconfig import load_aliases
 
 EXTRACTORS = {
     ".py": ("python", python.extract),
@@ -38,7 +39,7 @@ def add_structure(model: SystemModel, root: Path, components: list[Component]) -
         and owning_component(components, path)
     }
     files = set(sources)
-    aliases: dict[str, list] = {}
+    aliases = {c.name: load_aliases(root, c.path) for c in components if c.language == "js"}
 
     all_facts: dict[str, FileFacts] = {}
     for rel, path in sources.items():
