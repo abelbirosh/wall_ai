@@ -34,6 +34,18 @@ def find_components(root: Path) -> list[Component]:
     return components
 
 
+def is_test_file(rel: str) -> bool:
+    """Tests exercise the system but aren't part of it, so the model leaves them out."""
+    parts = rel.split("/")
+    name = parts[-1]
+    return (
+        bool({"tests", "test", "__tests__"} & set(parts[:-1]))
+        or name.startswith("test_")
+        or name.endswith(("_test.py", ".test.ts", ".test.js", ".spec.ts", ".spec.js"))
+        or name == "conftest.py"
+    )
+
+
 def owning_component(components: list[Component], file: Path) -> Component | None:
     """The innermost component whose directory contains the file."""
     owners = [c for c in components if file.is_relative_to(c.path)]
