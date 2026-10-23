@@ -1,0 +1,132 @@
+# wall_ai's catalog of external services and how code reaches them without a visible URL.
+#   python: top-level import names (normalized: lowercase, "_" -> "-")
+#   pypi / npm: package names in manifests and SBOMs; entries ending in "*" are prefixes
+#   schemes: connection-string schemes (postgresql+psycopg:// matches postgresql)
+#   images: container images in compose files (tag and registry ignored)
+#   env: environment variable prefixes in compose files
+services:
+  postgresql:
+    category: database
+    python: [psycopg, psycopg2, asyncpg, pg8000]
+    pypi: [psycopg, psycopg-binary, psycopg2, psycopg2-binary, asyncpg, pg8000]
+    npm: [pg, postgres]
+    schemes: [postgres, postgresql]
+    images: [postgres, postgis/postgis, bitnami/postgresql]
+    env: [POSTGRES_, PGHOST]
+  mysql:
+    category: database
+    python: [pymysql, mysqldb, aiomysql]
+    pypi: [pymysql, mysqlclient, aiomysql]
+    npm: [mysql, mysql2]
+    schemes: [mysql, mariadb]
+    images: [mysql, mariadb]
+    env: [MYSQL_]
+  mongodb:
+    category: database
+    python: [pymongo, motor]
+    pypi: [pymongo, motor]
+    npm: [mongodb, mongoose]
+    schemes: [mongodb, mongodb+srv]
+    images: [mongo]
+    env: [MONGO_]
+  redis:
+    category: cache
+    python: [redis, aioredis]
+    pypi: [redis, aioredis]
+    npm: [redis, ioredis]
+    schemes: [redis, rediss]
+    images: [redis, valkey/valkey, bitnami/redis]
+    env: [REDIS_]
+  rabbitmq:
+    category: queue
+    python: [pika, aio-pika]
+    pypi: [pika, aio-pika]
+    npm: [amqplib]
+    schemes: [amqp, amqps]
+    images: [rabbitmq]
+    env: [RABBITMQ_]
+  kafka:
+    category: queue
+    python: [kafka, confluent-kafka, aiokafka]
+    pypi: [kafka-python, confluent-kafka, aiokafka]
+    npm: [kafkajs]
+    images: [confluentinc/cp-kafka, bitnami/kafka, apache/kafka]
+    env: [KAFKA_]
+  elasticsearch:
+    category: search
+    python: [elasticsearch]
+    pypi: [elasticsearch]
+    npm: ["@elastic/elasticsearch"]
+    images: [elasticsearch, docker.elastic.co/elasticsearch/elasticsearch]
+  smtp:
+    category: email
+    python: [smtplib, emails, aiosmtplib, fastapi-mail]
+    pypi: [emails, aiosmtplib, fastapi-mail]
+    npm: [nodemailer]
+    schemes: [smtp, smtps]
+    images: [mailhog/mailhog, axllent/mailpit, schickling/mailcatcher]
+    env: [SMTP_]
+  sentry:
+    category: monitoring
+    python: [sentry-sdk]
+    pypi: [sentry-sdk]
+    npm: ["@sentry/*"]
+    env: [SENTRY_]
+  aws:
+    category: cloud
+    python: [boto3, botocore, aioboto3]
+    pypi: [boto3, botocore, aioboto3]
+    npm: [aws-sdk, "@aws-sdk/*"]
+    env: [AWS_]
+  gcp:
+    category: cloud
+    pypi: ["google-cloud-*"]
+    npm: ["@google-cloud/*"]
+  azure:
+    category: cloud
+    python: [azure]
+    pypi: ["azure-*"]
+    npm: ["@azure/*"]
+  stripe:
+    category: payments
+    python: [stripe]
+    pypi: [stripe]
+    npm: [stripe, "@stripe/stripe-js"]
+    env: [STRIPE_]
+  openai:
+    category: ai
+    python: [openai]
+    pypi: [openai]
+    npm: [openai]
+    env: [OPENAI_]
+  anthropic:
+    category: ai
+    python: [anthropic]
+    pypi: [anthropic]
+    npm: ["@anthropic-ai/sdk"]
+    env: [ANTHROPIC_]
+  twilio:
+    category: messaging
+    python: [twilio]
+    pypi: [twilio]
+    npm: [twilio]
+  sendgrid:
+    category: email
+    python: [sendgrid]
+    pypi: [sendgrid]
+    npm: ["@sendgrid/mail"]
+  slack:
+    category: messaging
+    python: [slack-sdk, slack-bolt]
+    pypi: [slack-sdk, slack-bolt]
+    npm: ["@slack/*"]
+  firebase:
+    category: cloud
+    python: [firebase-admin]
+    pypi: [firebase-admin]
+    npm: [firebase, firebase-admin]
+  supabase:
+    category: database
+    python: [supabase]
+    pypi: [supabase]
+    npm: ["@supabase/supabase-js"]

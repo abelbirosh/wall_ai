@@ -9,6 +9,7 @@ from wall_ai.understand.static.components import find_components
 from wall_ai.understand.static.frameworks.fastapi import add_fastapi
 from wall_ai.understand.static.integrations import add_integrations, run_semgrep
 from wall_ai.understand.static.inventory import add_inventory, run_cdxgen
+from wall_ai.understand.static.services import add_services
 from wall_ai.understand.static.structure import add_structure
 
 
@@ -21,5 +22,6 @@ def understand(root: Path) -> SystemModel:
         add_inventory(model, c, run_cdxgen(c))
     facts = add_structure(model, root, components)
     add_fastapi(model, root, components, facts)
+    add_services(model, root, components, facts)
     add_integrations(model, root, components, run_semgrep(root))
     return model
