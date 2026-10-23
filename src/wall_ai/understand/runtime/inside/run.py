@@ -32,6 +32,9 @@ OTEL_PACKAGES = ["opentelemetry-distro"]
 # Overlapping instrumentations double spans (fastapi+starlette, httpx+httpx2), and click wraps
 # uvicorn's whole command in one span, which makes every request look nested and INTERNAL.
 OTEL_DISABLED = "click,starlette,httpx2,asyncio,threading,logging,exceptions"
+# Run target processes as the sandbox user directly. A runuser wrapper SIGKILLs the child
+# right after shutdown, before Python's exit hooks write the call tracer's output.
+AS_USER = {"user": USER, "group": USER, "extra_groups": []}
 
 steps: list[dict] = []
 
@@ -204,6 +207,7 @@ def target_env(comp: dict, process: str) -> dict:
     proxy = f"http://127.0.0.1:{PROXY_PORT}"
     venv_bin = HOME / "venvs" / comp["name"] / "bin"
     return {
+        "HOME": str(HOME),
         "PATH": f"{venv_bin}:/usr/local/bin:/usr/bin:/bin",
         "HTTP_PROXY": proxy,
         "HTTPS_PROXY": proxy,
@@ -227,9 +231,11 @@ def serve_and_drive(comp: dict, inside: Path) -> None:
     env = target_env(comp, "server")
     python = HOME / "venvs" / comp["name"] / "bin" / "python"
     server = subprocess.Popen(
-        ["runuser", "-u", USER, "--", "env", "-i", *kv(env), str(python), "-m", "uvicorn"]
-        + [comp["asgi_app"], "--host", "127.0.0.1", "--port", str(comp["port"])],
+        [str(python), "-m", "uvicorn", comp["asgi_app"]]
+        + ["--host", "127.0.0.1", "--port", str(comp["port"])],
+        env=env,
         cwd=TARGET / comp["path"],
+        **AS_USER,
         stdout=open(OUT / comp["name"] / "server.log", "w"),
         stderr=subprocess.STDOUT,
         start_new_session=True,
@@ -250,9 +256,10 @@ def run_tests(comp: dict) -> None:
     env = target_env(comp, "pytest")
     python = HOME / "venvs" / comp["name"] / "bin" / "python"
     result = subprocess.run(
-        ["runuser", "-u", USER, "--", "env", "-i", *kv(env), str(python), "-m", "pytest"]
-        + ["-q", "-p", "no:cacheprovider"],
+        [str(python), "-m", "pytest", "-q", "-p", "no:cacheprovider"],
+        env=env,
         cwd=TARGET / comp["path"],
+        **AS_USER,
         capture_output=True,
         text=True,
         timeout=600,
@@ -277,7 +284,7 @@ def collect(staging: Path, plan: dict) -> None:
 
 
 def stop(proc: subprocess.Popen) -> None:
-    for sig, wait in ((signal.SIGTERM, 15), (signal.SIGKILL, 5)):
+    for sig, wait in ((signal.SIGINT, 15), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
         try:
             os.killpg(proc.pid, sig)
             proc.wait(timeout=wait)
@@ -301,17 +308,14 @@ def wait_for_port(port: int, timeout: float = 30) -> None:
 
 def as_user(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     env = {"HOME": str(HOME), "PATH": "/usr/local/bin:/usr/bin:/bin"}
-    return run(["runuser", "-u", USER, "--", "env", "-i", *kv(env), *cmd], check=check)
+    return run(cmd, env=env, check=check, clean=True, **AS_USER)
 
 
-def kv(env: dict) -> list[str]:
-    return [f"{k}={v}" for k, v in env.items()]
-
-
-def run(cmd: list[str], env: dict | None = None, check: bool = True) -> subprocess.CompletedProcess:
-    result = subprocess.run(
-        cmd, env={**os.environ, **(env or {})}, capture_output=True, text=True, cwd="/"
-    )
+def run(
+    cmd: list[str], env: dict | None = None, check: bool = True, clean: bool = False, **kwargs
+) -> subprocess.CompletedProcess:
+    full_env = (env or {}) if clean else {**os.environ, **(env or {})}
+    result = subprocess.run(cmd, env=full_env, capture_output=True, text=True, cwd="/", **kwargs)
     if check and result.returncode != 0:
         raise RuntimeError(
             f"{' '.join(cmd[:6])} failed: {(result.stderr or result.stdout)[-1500:]}"
