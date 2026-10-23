@@ -101,9 +101,13 @@ class SystemModel:
         return result
 
     def unused_functions(self) -> list[Node]:
-        """Functions nothing calls and no endpoint is handled by."""
-        reached = {e.dst for e in self.edges() if e.kind in ("calls", "handled_by")}
-        return [n for n in self.nodes("function") if n.id not in reached]
+        """Functions nothing calls, references or routes to, and no framework runs by convention."""
+        reached = {e.dst for e in self.edges() if e.kind in ("calls", "handled_by", "references")}
+        return [
+            n
+            for n in self.nodes("function")
+            if n.id not in reached and not n.attrs.get("entry_point")
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         return {
