@@ -4,6 +4,7 @@ own rules (rules/integrations.yml)."""
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -46,10 +47,6 @@ def add_integrations(
         model.add_node(endpoint, "endpoint", method=method, path=path)
         model.add_edge(f"component:{component.name}", endpoint, "exposes", Evidence.STATIC, source)
         handler = func[0] if func else f"<{method} {path}>"
-        if len(func) > 1:  # FastAPI: record the ASGI app so the runtime pipeline can serve it
-            module = Path(r["path"]).relative_to(component.rel).with_suffix("")
-            asgi_app = f"{'.'.join(module.parts)}:{func[1]}"
-            model.add_node(f"component:{component.name}", "component", asgi_app=asgi_app)
         handler_id = f"function:{r['path']}:{handler}"
         if any(n.id == handler_id for n in model.nodes("function")):
             model.add_edge(endpoint, handler_id, "handled_by", Evidence.STATIC, source)
@@ -59,10 +56,13 @@ def add_integrations(
         verb, url = r["extra"]["message"].split(" ", 1)
         method = "GET" if verb == "fetch" else verb.upper()
         parsed = urlparse(url)
-        if not parsed.hostname:
-            continue
         line = r["start"]["line"]
         caller = _enclosing_function(model, r["path"], line) or f"file:{r['path']}"
+        if not parsed.hostname:
+            # A relative URL, as generated API clients use: match it to a known endpoint.
+            if endpoint := _endpoint_for(model, method, parsed.path):
+                model.add_edge(caller, endpoint, "talks_to", Evidence.STATIC, f"{r['path']}:{line}")
+            continue
         if parsed.hostname in names:
             endpoint = f"endpoint:{parsed.hostname}:{method} {parsed.path or '/'}"
             known = any(n.id == endpoint for n in model.nodes("endpoint"))
@@ -71,6 +71,23 @@ def add_integrations(
             target = f"host:{parsed.hostname}"
             model.add_node(target, "host")
         model.add_edge(caller, target, "talks_to", Evidence.STATIC, f"{r['path']}:{line}")
+
+
+def _endpoint_for(model: SystemModel, method: str, path: str) -> str | None:
+    """The one endpoint with this method and path, treating {id} and :id as the same."""
+    if not path.startswith("/"):
+        return None
+    wanted = (method, _template(path))
+    matches = [
+        n.id
+        for n in model.nodes("endpoint")
+        if (n.attrs.get("method"), _template(n.attrs.get("path", ""))) == wanted
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _template(path: str) -> str:
+    return re.sub(r"\{[^}]*\}|:[A-Za-z_]\w*", "{}", path)
 
 
 def _enclosing_function(model: SystemModel, path: str, line: int) -> str | None:

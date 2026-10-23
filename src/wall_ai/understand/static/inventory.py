@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import unquote
 
 from wall_ai.understand.model import Evidence, SystemModel
 from wall_ai.understand.static.components import Component
@@ -15,10 +16,14 @@ CDXGEN_TYPES = {"python": "python", "js": "js"}
 
 
 def package_id(purl: str) -> str:
-    """A purl without version, qualifiers or subpath: pkg:pypi/httpx@0.27.2 -> pkg:pypi/httpx."""
-    base = purl.split("#", 1)[0].split("?", 1)[0]
+    """A purl without version, qualifiers or subpath: pkg:pypi/httpx@0.27.2 -> pkg:pypi/httpx.
+
+    Scopes are decoded (pkg:npm/%40types/node -> pkg:npm/@types/node): cdxgen encodes them in
+    component purls but not always in dependency refs.
+    """
+    base = unquote(purl.split("#", 1)[0].split("?", 1)[0])
     head, _, tail = base.partition("/")
-    return f"{head}/{tail.rsplit('@', 1)[0]}" if "@" in tail else base
+    return f"{head}/{tail.rsplit('@', 1)[0]}" if "@" in tail[1:] else base
 
 
 def run_cdxgen(component: Component) -> dict:
@@ -47,9 +52,10 @@ def add_inventory(model: SystemModel, component: Component, bom: dict) -> None:
     graph = {d["ref"]: d.get("dependsOn", []) for d in bom.get("dependencies", [])}
     direct = graph.get(root_ref) or [i["purl"] for i in bom.get("components", []) if "purl" in i]
     source = f"cdxgen:{component.rel}"
-    for purl in direct:
-        model.add_edge(component_id, package_id(purl), "depends_on", Evidence.STATIC, source)
     known = {n.id for n in model.nodes("package")}
+    for purl in direct:
+        if package_id(purl) in known:
+            model.add_edge(component_id, package_id(purl), "depends_on", Evidence.STATIC, source)
     for ref, deps in graph.items():
         if ref == root_ref or package_id(ref) not in known:
             continue

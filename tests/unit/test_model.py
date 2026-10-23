@@ -144,3 +144,14 @@ def test_compare_splits_links_by_evidence():
     assert [(e.src, e.dst) for e in result["confirmed"]] == [("a", "b")]
     assert [(e.src, e.dst) for e in result["static_only"]] == [("a", "c")]
     assert [(e.src, e.dst) for e in result["observed_only"]] == [("a", "d")]
+
+
+def test_referenced_functions_and_entry_points_are_not_unused():
+    model = SystemModel()
+    model.add_node("file:a.py", "file")
+    model.add_node("function:a.py:dependency", "function")
+    model.add_node("function:a.py:migration", "function", entry_point="alembic migration")
+    model.add_node("function:a.py:orphan", "function")
+    model.add_edge("file:a.py", "function:a.py:dependency", "references", Evidence.STATIC, "a:1")
+
+    assert {n.id for n in model.unused_functions()} == {"function:a.py:orphan"}

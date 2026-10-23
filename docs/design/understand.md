@@ -41,6 +41,22 @@ The first wall_ai component. It builds a model of a target system's structure, d
 | Integrations | Which outside APIs and services does it talk to? | Semgrep / ast-grep (wall_ai's own rules), TruffleHog, Checkov / Trivy |
 | Exposed API | Which endpoints does it serve? | atom, Joern route queries, published specs (e.g. FastAPI `/openapi.json`) |
 
+#### Built so far (static)
+
+Checked against two samples with ground truth, and against [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template).
+
+- **Structure (tree-sitter, Python and TS):**
+  - calls, including through `self`/`this` and imported classes;
+  - functions used as values (callbacks, `Depends(...)`, props, `fn.bind`);
+  - React components rendered as JSX;
+  - code that runs at import time;
+  - tsconfig path aliases, barrel re-exports and default exports.
+- **Entry points:** functions a framework runs by convention aren't reported as unused: decorated functions, Alembic migrations and console scripts.
+- **FastAPI:** finds the real app instance, and follows `include_router` chains to full route paths, including prefixes held in a settings constant.
+- **Services:** wall_ai's own catalog (`rules/services.yml`) maps SDK imports, SBOM packages, connection strings, compose images and environment variables to services (databases, queues, email, monitoring, SaaS APIs).
+- **Generated API clients:** calls by relative URL are matched to the backend endpoint they hit.
+- **Not yet:** SCIP/Joern for precise resolution, data flow, atom reachability, and frameworks other than FastAPI and Express.
+
 ### Runtime pipeline
 
 | Step | Tools |
@@ -72,8 +88,8 @@ Targets are treated as untrusted, including the user's own code.
 
 One graph.
 
-- **Nodes:** files, modules, functions, packages, endpoints the target exposes, external services and hosts.
-- **Links:** `contains`, `imports`, `calls`, `depends_on`, `exposes`, `handled_by`, `talks_to`. Links can carry attributes, such as how many times a link was observed.
+- **Nodes:** files, modules, functions, packages, endpoints the target exposes, services (databases, SaaS APIs) and hosts.
+- **Links:** `contains`, `imports`, `calls`, `references`, `depends_on`, `exposes`, `handled_by`, `talks_to`, `uses_service`. Links can carry attributes, such as how many times a link was observed.
 - **Evidence:** every link records how it is known: `static` (found in code), `observed` (seen at runtime) or `inferred` (suggested by an LLM), plus a pointer to its source.
 
 Comparing static and observed links separates:

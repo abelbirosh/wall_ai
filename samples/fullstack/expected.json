@@ -1,0 +1,126 @@
+{
+  "asgi_app": {
+    "backend": "app.main:app"
+  },
+  "endpoints": [
+    [
+      "endpoint:backend:GET /api/v1/users/",
+      "function:backend/app/api/routes/users.py:read_users"
+    ],
+    [
+      "endpoint:backend:POST /api/v1/users/",
+      "function:backend/app/api/routes/users.py:create_user"
+    ],
+    [
+      "endpoint:backend:GET /api/v1/items/",
+      "function:backend/app/api/routes/items.py:read_items"
+    ],
+    [
+      "endpoint:backend:GET /api/v1/items/{id}",
+      "function:backend/app/api/routes/items.py:read_item"
+    ]
+  ],
+  "calls": [
+    [
+      "function:backend/app/api/routes/users.py:read_users",
+      "function:backend/app/crud.py:get_users"
+    ],
+    [
+      "function:backend/app/api/routes/users.py:create_user",
+      "function:backend/app/crud.py:create_user"
+    ],
+    [
+      "function:backend/app/api/routes/users.py:create_user",
+      "function:backend/app/utils.py:send_email"
+    ],
+    [
+      "function:backend/app/core/config.py:Settings.emails_enabled",
+      "function:backend/app/core/config.py:Settings._has_smtp"
+    ],
+    [
+      "file:backend/app/initial_data.py",
+      "function:backend/app/initial_data.py:main"
+    ],
+    [
+      "file:frontend/src/main.tsx",
+      "function:frontend/src/App.tsx:App"
+    ],
+    [
+      "function:frontend/src/App.tsx:App",
+      "function:frontend/src/components/UserList.tsx:UserList"
+    ],
+    [
+      "function:frontend/src/components/UserList.tsx:UserList",
+      "function:frontend/src/components/Button.tsx:Button"
+    ],
+    [
+      "function:frontend/src/components/UserList.tsx:UserList",
+      "function:frontend/src/client/sdk.gen.ts:UsersService.readUsers"
+    ]
+  ],
+  "references": [
+    [
+      "file:backend/app/main.py",
+      "function:backend/app/main.py:custom_generate_unique_id"
+    ],
+    [
+      "function:backend/app/api/deps.py:get_current_user",
+      "function:backend/app/api/deps.py:get_db"
+    ],
+    [
+      "function:backend/app/api/routes/users.py:read_users",
+      "function:backend/app/api/deps.py:get_current_user"
+    ],
+    [
+      "function:frontend/src/components/UserList.tsx:UserList",
+      "function:frontend/src/components/UserList.tsx:handleRefresh"
+    ],
+    [
+      "function:frontend/src/components/UserList.tsx:UserList",
+      "function:frontend/src/utils.ts:formatError"
+    ]
+  ],
+  "alias_imports": [
+    [
+      "file:frontend/src/main.tsx",
+      "file:frontend/src/App.tsx"
+    ],
+    [
+      "file:frontend/src/App.tsx",
+      "file:frontend/src/components/UserList.tsx"
+    ],
+    [
+      "file:frontend/src/components/UserList.tsx",
+      "file:frontend/src/client/index.ts"
+    ]
+  ],
+  "services": [
+    [
+      "component:backend",
+      "service:postgresql"
+    ],
+    [
+      "component:backend",
+      "service:smtp"
+    ],
+    [
+      "component:backend",
+      "service:sentry"
+    ]
+  ],
+  "talks_to": [
+    [
+      "function:frontend/src/client/sdk.gen.ts:UsersService.readUsers",
+      "endpoint:backend:GET /api/v1/users/"
+    ],
+    [
+      "function:frontend/src/client/sdk.gen.ts:UsersService.createUser",
+      "endpoint:backend:POST /api/v1/users/"
+    ]
+  ],
+  "unused_functions": [
+    "function:backend/app/crud.py:create_item",
+    "function:frontend/src/components/UserList.tsx:UnusedWidget",
+    "function:frontend/src/client/sdk.gen.ts:UsersService.createUser"
+  ]
+}
