@@ -107,7 +107,8 @@ class Found:
         self.model.add_node(service_id, "service", category=category)
         component_id = f"component:{component.name}"
         self.model.add_edge(component_id, service_id, "uses_service", Evidence.STATIC, source)
-        if file:
+        if file and any(n.id == f"file:{file}" for n in self.model.nodes("file")):
+            # Source files get their own link; config files (.env, YAML) only name the source.
             self.model.add_edge(f"file:{file}", service_id, "uses_service", Evidence.STATIC, source)
 
 
@@ -127,7 +128,10 @@ def _compose(found: Found, catalog: Catalog, root: Path, components, compose: Pa
             continue
         build = spec["build"]
         context = build.get("context", ".") if isinstance(build, dict) else build
-        component = owning_component(components, (compose.parent / context).resolve() / "x")
+        location = (compose.parent / context).resolve() / "x"
+        if isinstance(build, dict) and build.get("dockerfile"):  # context ".", backend/Dockerfile
+            location = (compose.parent / context / build["dockerfile"]).resolve()
+        component = owning_component(components, location)
         if component is None:
             continue
         depends = spec.get("depends_on", [])
