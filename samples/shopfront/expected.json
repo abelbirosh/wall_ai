@@ -1,0 +1,35 @@
+{
+  "components": ["api", "notifier"],
+  "packages": [
+    ["api", "pkg:pypi/fastapi"],
+    ["api", "pkg:pypi/httpx"],
+    ["api", "pkg:pypi/uvicorn"],
+    ["notifier", "pkg:npm/express"],
+    ["notifier", "pkg:npm/axios"]
+  ],
+  "endpoints": [
+    ["endpoint:api:GET /products", "function:api/app/main.py:list_products"],
+    ["endpoint:api:POST /checkout", "function:api/app/main.py:checkout"],
+    ["endpoint:notifier:POST /notify", "function:notifier/src/server.ts:<POST /notify>"],
+    ["endpoint:notifier:GET /digest", "function:notifier/src/server.ts:<GET /digest>"]
+  ],
+  "imports": [
+    ["file:api/app/main.py", "file:api/app/catalog.py"],
+    ["file:api/app/main.py", "file:api/app/payments.py"],
+    ["file:notifier/src/server.ts", "file:notifier/src/catalogClient.ts"],
+    ["file:notifier/src/server.ts", "file:notifier/src/email.ts"]
+  ],
+  "calls": [
+    ["function:api/app/main.py:list_products", "function:api/app/catalog.py:all_products"],
+    ["function:api/app/main.py:checkout", "function:api/app/catalog.py:price_of"],
+    ["function:api/app/main.py:checkout", "function:api/app/payments.py:charge"],
+    ["function:notifier/src/server.ts:<POST /notify>", "function:notifier/src/email.ts:sendEmail"],
+    ["function:notifier/src/server.ts:<GET /digest>", "function:notifier/src/catalogClient.ts:fetchProducts"]
+  ],
+  "talks_to": [
+    ["function:api/app/payments.py:charge", "host:api.stripe.com"],
+    ["function:notifier/src/email.ts:sendEmail", "host:api.sendgrid.com"],
+    ["function:notifier/src/catalogClient.ts:fetchProducts", "endpoint:api:GET /products"]
+  ],
+  "unused_functions": ["function:api/app/catalog.py:legacy_discount"]
+}
