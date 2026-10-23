@@ -126,7 +126,11 @@ def _scan(facts: FileFacts, node: Node | None, caller: str) -> None:
         line = child.start_point.row + 1
         if child.type == "call_expression":
             target = _dotted(child.child_by_field_name("function"))
-            if target:
+            if target and len(target) > 1 and target[-1] == "bind":  # fn.bind(x) passes fn
+                facts.references.append(Call(caller, target[:-1], line))
+            elif target and len(target) > 1 and target[-1] in ("call", "apply"):
+                facts.calls.append(Call(caller, target[:-1], line))
+            elif target:
                 facts.calls.append(Call(caller, target, line))
         elif child.type in JSX_ELEMENTS:
             target = _dotted(child.child_by_field_name("name"))
