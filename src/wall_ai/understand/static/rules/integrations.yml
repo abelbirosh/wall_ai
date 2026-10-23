@@ -4,7 +4,7 @@ rules:
   - id: route.python.fastapi
     languages: [python]
     severity: INFO
-    message: "$METHOD $PATH $FUNC"
+    message: "$METHOD $PATH $FUNC $APP"
     patterns:
       - pattern: |
           @$APP.$METHOD("$PATH", ...)

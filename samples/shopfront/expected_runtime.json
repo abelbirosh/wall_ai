@@ -1,0 +1,31 @@
+{
+  "ran": ["api"],
+  "exposes": {
+    "confirmed": [
+      ["component:api", "endpoint:api:GET /products"],
+      ["component:api", "endpoint:api:POST /checkout"]
+    ],
+    "observed_only": [["component:api", "endpoint:api:GET /openapi.json"]]
+  },
+  "handled_by": {
+    "confirmed": [
+      ["endpoint:api:GET /products", "function:api/app/main.py:list_products"],
+      ["endpoint:api:POST /checkout", "function:api/app/main.py:checkout"]
+    ],
+    "observed_only": []
+  },
+  "calls": {
+    "confirmed": [
+      ["function:api/app/main.py:checkout", "function:api/app/catalog.py:price_of"],
+      ["function:api/app/main.py:checkout", "function:api/app/payments.py:charge"],
+      ["function:api/app/main.py:list_products", "function:api/app/catalog.py:all_products"]
+    ],
+    "observed_only": []
+  },
+  "talks_to": {
+    "confirmed": [["function:api/app/payments.py:charge", "host:api.stripe.com"]],
+    "observed_only": []
+  },
+  "egress": {"api.stripe.com": {"mocked": 1}},
+  "never_executed": ["function:api/app/catalog.py:legacy_discount"]
+}

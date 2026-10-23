@@ -84,3 +84,63 @@ def test_unused_functions_ignore_endpoint_handlers():
 
     # f has no callers but isn't a handler; g is called; handler serves an endpoint.
     assert unused == {"function:a.py:f"}
+
+
+def test_link_attributes_merge_and_counts_add_up():
+    model = _model_with_call(Evidence.OBSERVED)
+    model.add_edge(
+        "function:a.py:f", "function:b.py:g", "calls", Evidence.OBSERVED, "run:1", count=2
+    )
+    model.add_edge(
+        "function:a.py:f", "function:b.py:g", "calls", Evidence.OBSERVED, "run:2", count=3, p95_ms=4
+    )
+
+    [edge] = model.edges("calls")
+    assert edge.attrs == {"count": 5, "p95_ms": 4}
+    assert edge.sources == ["a.py:3", "run:1", "run:2"]
+
+
+def test_merge_adds_counts_once_per_link():
+    static = _model_with_call(Evidence.STATIC)
+    observed = SystemModel()
+    observed.add_node("function:a.py:f", "function")
+    observed.add_node("function:b.py:g", "function")
+    observed.add_edge(
+        "function:a.py:f", "function:b.py:g", "calls", Evidence.OBSERVED, "run:1", count=4
+    )
+    observed.add_edge(
+        "function:a.py:f", "function:b.py:g", "calls", Evidence.OBSERVED, "run:2", count=1
+    )
+
+    static.merge(observed)
+
+    [edge] = static.edges("calls")
+    assert edge.attrs == {"count": 5}
+
+
+def test_round_trip_keeps_link_attributes():
+    model = _model_with_call(Evidence.OBSERVED)
+    model.add_edge(
+        "function:a.py:f", "function:b.py:g", "calls", Evidence.OBSERVED, "run:1", count=7
+    )
+
+    restored = SystemModel.from_dict(model.to_dict())
+
+    assert restored.edges("calls")[0].attrs == {"count": 7}
+
+
+def test_compare_splits_links_by_evidence():
+    model = SystemModel()
+    for name in "abcd":
+        model.add_node(name, "function")
+    model.add_edge("a", "b", "calls", Evidence.STATIC, "src")
+    model.add_edge("a", "b", "calls", Evidence.OBSERVED, "run")
+    model.add_edge("a", "c", "calls", Evidence.STATIC, "src")
+    model.add_edge("a", "d", "calls", Evidence.OBSERVED, "run")
+    model.add_edge("b", "c", "imports", Evidence.STATIC, "src")
+
+    result = model.compare("calls")
+
+    assert [(e.src, e.dst) for e in result["confirmed"]] == [("a", "b")]
+    assert [(e.src, e.dst) for e in result["static_only"]] == [("a", "c")]
+    assert [(e.src, e.dst) for e in result["observed_only"]] == [("a", "d")]

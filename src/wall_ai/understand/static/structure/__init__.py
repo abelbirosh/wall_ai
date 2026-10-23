@@ -5,7 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from wall_ai.understand.model import Evidence, SystemModel
-from wall_ai.understand.static.components import SKIP_DIRS, Component, owning_component
+from wall_ai.understand.static.components import (
+    SKIP_DIRS,
+    Component,
+    is_test_file,
+    owning_component,
+)
 from wall_ai.understand.static.structure import python, typescript
 from wall_ai.understand.static.structure.facts import Call, FileFacts, Import
 
@@ -26,6 +31,7 @@ def add_structure(model: SystemModel, root: Path, components: list[Component]) -
         if path.suffix in EXTRACTORS
         and path.is_file()
         and not SKIP_DIRS.intersection(path.relative_to(root).parts)
+        and not is_test_file(path.relative_to(root).as_posix())
         and owning_component(components, path)
     }
     files = set(sources)

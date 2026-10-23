@@ -27,6 +27,7 @@ class Edge:
     kind: str
     evidence: set[Evidence] = field(default_factory=set)
     sources: list[str] = field(default_factory=list)
+    attrs: dict[str, Any] = field(default_factory=dict)  # "count" adds up; others overwrite
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -47,7 +48,9 @@ class SystemModel:
         node.attrs.update(attrs)
         return node
 
-    def add_edge(self, src: str, dst: str, kind: str, evidence: Evidence, source: str) -> Edge:
+    def add_edge(
+        self, src: str, dst: str, kind: str, evidence: Evidence, source: str, **attrs: Any
+    ) -> Edge:
         for node_id in (src, dst):
             if node_id not in self._nodes:
                 raise KeyError(node_id)
@@ -55,6 +58,9 @@ class SystemModel:
         edge.evidence.add(evidence)
         if source not in edge.sources:
             edge.sources.append(source)
+        if "count" in attrs:
+            edge.attrs["count"] = edge.attrs.get("count", 0) + attrs.pop("count")
+        edge.attrs.update(attrs)
         return edge
 
     def node(self, node_id: str) -> Node:
@@ -74,9 +80,25 @@ class SystemModel:
         for node in other.nodes():
             self.add_node(node.id, node.kind, **node.attrs)
         for edge in other.edges():
+            attrs = dict(edge.attrs)  # applied once, so counts aren't added per source
             for evidence in sorted(edge.evidence):
                 for source in edge.sources:
-                    self.add_edge(edge.src, edge.dst, edge.kind, evidence, source)
+                    self.add_edge(edge.src, edge.dst, edge.kind, evidence, source, **attrs)
+                    attrs = {}
+
+    def compare(self, kind: str | None = None) -> dict[str, list[Edge]]:
+        """Split links into confirmed (static and observed), static only and observed only."""
+        result: dict[str, list[Edge]] = {"confirmed": [], "static_only": [], "observed_only": []}
+        for edge in sorted(self.edges(kind), key=lambda e: e.key):
+            static = Evidence.STATIC in edge.evidence
+            observed = Evidence.OBSERVED in edge.evidence
+            if static and observed:
+                result["confirmed"].append(edge)
+            elif static:
+                result["static_only"].append(edge)
+            elif observed:
+                result["observed_only"].append(edge)
+        return result
 
     def unused_functions(self) -> list[Node]:
         """Functions nothing calls and no endpoint is handled by."""
@@ -96,6 +118,7 @@ class SystemModel:
                     "kind": e.kind,
                     "evidence": sorted(e.evidence),
                     "sources": e.sources,
+                    "attrs": e.attrs,
                 }
                 for e in sorted(self._edges.values(), key=lambda e: e.key)
             ],
@@ -112,4 +135,5 @@ class SystemModel:
             )
             edge.evidence.update(Evidence(v) for v in e["evidence"])
             edge.sources.extend(e["sources"])
+            edge.attrs.update(e.get("attrs", {}))
         return model
