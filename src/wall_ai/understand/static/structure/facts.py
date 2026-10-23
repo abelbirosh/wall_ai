@@ -49,3 +49,5 @@ class FileFacts:
     imports: list[Import] = field(default_factory=list)
     calls: list[Call] = field(default_factory=list)
     references: list[Call] = field(default_factory=list)
+    # export { A as B } from "./x" -> ("B", "A", "x.ts"); export * from "./x" -> ("*", "*", "x.ts")
+    reexports: list[tuple[str, str, str]] = field(default_factory=list)

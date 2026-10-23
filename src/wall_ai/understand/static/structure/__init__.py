@@ -81,21 +81,24 @@ def add_structure(model: SystemModel, root: Path, components: list[Component]) -
         local = {fn.name for fn in facts.functions}
         for kind, items in (("calls", facts.calls), ("references", facts.references)):
             for call in items:
-                callee = _resolve(call, rel, local, bindings)
+                callee = _resolve(call, rel, local, bindings, all_facts)
                 caller = f"file:{rel}" if call.caller == MODULE else f"function:{rel}:{call.caller}"
                 if callee and callee != caller and _has(model, callee):
                     model.add_edge(caller, callee, kind, Evidence.STATIC, f"{rel}:{call.line}")
     return all_facts
 
 
-def _resolve(call: Call, rel: str, local: set[str], bindings: dict[str, Import]) -> str | None:
+def _resolve(
+    call: Call, rel: str, local: set[str], bindings: dict[str, Import], all_facts: dict
+) -> str | None:
     *qualifier, name = call.target
     if not qualifier:
         if name in local:
             return f"function:{rel}:{name}"
         imp = bindings.get(name)
         if imp and imp.file and imp.symbol and imp.symbol != "default":
-            return f"function:{imp.file}:{imp.symbol}"
+            file, symbol = _defining(imp.file, imp.symbol, all_facts)
+            return f"function:{file}:{symbol}"
         return None
     if len(qualifier) == 1 and qualifier[0] in SELF and "." in call.caller:
         method = f"{call.caller.split('.')[0]}.{name}"  # self.x() inside Class.method
@@ -106,8 +109,33 @@ def _resolve(call: Call, rel: str, local: set[str], bindings: dict[str, Import])
     if imp and imp.file and imp.symbol is None:  # module.function()
         return f"function:{imp.file}:{name}"
     if imp and imp.file and imp.symbol and len(qualifier) == 1:  # ImportedClass.method()
-        return f"function:{imp.file}:{imp.symbol}.{name}"
+        file, symbol = _defining(imp.file, imp.symbol, all_facts)
+        return f"function:{file}:{symbol}.{name}"
     return None
+
+
+def _defining(file: str, symbol: str, all_facts: dict, depth: int = 0) -> tuple[str, str]:
+    """Follow re-exports (barrel files) to the file that defines symbol."""
+    facts = all_facts.get(file)
+    if facts is None or depth > 5:
+        return file, symbol
+    if any(fn.name == symbol or fn.name.startswith(f"{symbol}.") for fn in facts.functions):
+        return file, symbol
+    for exported, original, target in facts.reexports:
+        if exported == symbol:
+            return _defining(target, original, all_facts, depth + 1)
+    for exported, _, target in facts.reexports:
+        if exported == "*":
+            found = _defining(target, symbol, all_facts, depth + 1)
+            if found != (target, symbol) or _defines(all_facts.get(target), symbol):
+                return found
+    return file, symbol
+
+
+def _defines(facts, symbol: str) -> bool:
+    return facts is not None and any(
+        fn.name == symbol or fn.name.startswith(f"{symbol}.") for fn in facts.functions
+    )
 
 
 def _has(model: SystemModel, node_id: str) -> bool:

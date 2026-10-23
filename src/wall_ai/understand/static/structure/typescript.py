@@ -37,6 +37,9 @@ def extract(source: bytes, ctx: Context) -> FileFacts:
     facts = FileFacts()
     tree = parser.parse(source)  # keep the tree alive while its nodes are in use
     for node in tree.root_node.children:
+        if node.type == "export_statement" and node.child_by_field_name("source"):
+            facts.reexports.extend(_reexports(node, ctx))
+            continue
         if node.type == "export_statement" and node.child_by_field_name("declaration"):
             node = node.child_by_field_name("declaration")
         if node.type == "function_declaration":
@@ -151,6 +154,21 @@ def _imports(node: Node, ctx: Context) -> list[Import]:
                 name = _text(spec_node.child_by_field_name("name"))
                 alias = spec_node.child_by_field_name("alias")
                 result.append(Import(_text(alias) if alias else name, file, package, name, line))
+    return result
+
+
+def _reexports(node: Node, ctx: Context) -> list[tuple[str, str, str]]:
+    file = _resolve(_string(node.child_by_field_name("source")), ctx)
+    if file is None:
+        return []
+    clause = next((c for c in node.named_children if c.type == "export_clause"), None)
+    if clause is None:
+        return [("*", "*", file)]
+    result = []
+    for spec in clause.named_children:
+        name = _text(spec.child_by_field_name("name"))
+        alias = spec.child_by_field_name("alias")
+        result.append((_text(alias) if alias else name, name, file))
     return result
 
 
