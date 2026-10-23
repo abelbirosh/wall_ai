@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:18
+  backend:
+    build: ./backend
+    depends_on: [db]
+    environment:
+      POSTGRES_SERVER: db
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://backend:8000

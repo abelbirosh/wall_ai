@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    /* Path aliases, as in Vite templates */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+  },
+  "include": ["src"]
+}
