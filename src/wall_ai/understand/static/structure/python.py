@@ -14,7 +14,8 @@ _PARSER = Parser(Language(tree_sitter_python.language()))
 
 def extract(source: bytes, rel_path: str, component_rel: str, files: set[str]) -> FileFacts:
     facts = FileFacts()
-    root = _PARSER.parse(source).root_node
+    tree = _PARSER.parse(source)  # keep the tree alive while its nodes are in use
+    root = tree.root_node
     for node in root.children:
         if node.type == "decorated_definition":
             node = node.child_by_field_name("definition")
