@@ -20,6 +20,8 @@ def ingest(model: SystemModel, out: Path, run_id: str) -> None:
     executed: Counter = Counter()
     for component_dir in sorted(p for p in out.iterdir() if p.is_dir()):
         component = component_dir.name
+        if _has(model, f"component:{component}"):
+            model.add_node(f"component:{component}", "component", ran_in=run_id)
         for calls_file in sorted(component_dir.glob("*/calls-*.json")):
             data = json.loads(calls_file.read_text())
             executed.update(data["functions"])
@@ -49,11 +51,17 @@ def ingest(model: SystemModel, out: Path, run_id: str) -> None:
 
 
 def not_executed(model: SystemModel) -> list[Node]:
-    """Functions the code defines that never ran."""
+    """Functions the code defines that never ran, in components that were run."""
+    ran = {n.id.split(":", 1)[1] for n in model.nodes("component") if n.attrs.get("ran_in")}
+
+    def component(fn: Node) -> str | None:
+        file_id = f"file:{fn.attrs.get('file')}"
+        return model.node(file_id).attrs.get("component") if _has(model, file_id) else None
+
     return [
         n
         for n in model.nodes("function")
-        if not n.attrs.get("executed") and not n.attrs.get("observed_only")
+        if not n.attrs.get("executed") and not n.attrs.get("observed_only") and component(n) in ran
     ]
 
 
