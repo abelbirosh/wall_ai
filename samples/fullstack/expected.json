@@ -74,6 +74,10 @@
     [
       "function:frontend/src/components/UserList.tsx:UserList",
       "function:frontend/src/components/UserList.tsx:handleRefresh"
+    ],
+    [
+      "function:frontend/src/components/UserList.tsx:UserList",
+      "function:frontend/src/utils.ts:formatError"
     ]
   ],
   "alias_imports": [

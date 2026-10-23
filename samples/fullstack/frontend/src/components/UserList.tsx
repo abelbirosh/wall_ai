@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { UsersService } from "@/client";
-import { Button } from "./Button";
+import Button from "./Button";
+import { formatError } from "@/utils";
 
 function handleRefresh() {
   window.location.reload();
@@ -9,7 +10,10 @@ function handleRefresh() {
 export function UserList() {
   const [users, setUsers] = useState([]);
   useEffect(() => {
-    UsersService.readUsers().then((r) => setUsers(r.data));
+    const onError = formatError.bind(null);
+    UsersService.readUsers()
+      .then((r) => setUsers(r.data))
+      .catch(onError);
   }, []);
   return (
     <ul>
