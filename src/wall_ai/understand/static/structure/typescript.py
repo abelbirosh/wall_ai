@@ -20,7 +20,8 @@ EXTENSIONS = ("", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 def extract(source: bytes, rel_path: str, component_rel: str, files: set[str]) -> FileFacts:
     parser = _TSX if rel_path.endswith((".tsx", ".jsx")) else _TS
     facts = FileFacts()
-    for node in parser.parse(source).root_node.children:
+    tree = parser.parse(source)  # keep the tree alive while its nodes are in use
+    for node in tree.root_node.children:
         if node.type == "export_statement" and node.child_by_field_name("declaration"):
             node = node.child_by_field_name("declaration")
         if node.type == "function_declaration":
@@ -96,7 +97,7 @@ def _package(spec: str) -> str | None:
         return None
     parts = spec.split("/")
     if spec.startswith("@") and len(parts) > 1:
-        return f"pkg:npm/%40{parts[0][1:]}/{parts[1]}"
+        return f"pkg:npm/{parts[0]}/{parts[1]}"
     return f"pkg:npm/{parts[0]}"
 
 
