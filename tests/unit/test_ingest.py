@@ -12,14 +12,15 @@ RUN = "run:test"
 def model() -> SystemModel:
     m = SystemModel()
     m.add_node("component:api", "component")
-    m.add_node("file:api/app/main.py", "file")
+    for path in ("api/app/main.py", "api/app/catalog.py", "api/app/payments.py"):
+        m.add_node(f"file:{path}", "file", component="api")
     for fn in (
         "api/app/main.py:list_products",
         "api/app/catalog.py:all_products",
         "api/app/catalog.py:legacy_discount",
         "api/app/payments.py:charge",
     ):
-        m.add_node(f"function:{fn}", "function")
+        m.add_node(f"function:{fn}", "function", file=fn.split(":")[0])
     m.add_node("endpoint:api:GET /products", "endpoint")
     m.add_edge("component:api", "endpoint:api:GET /products", "exposes", Evidence.STATIC, "s")
     m.add_edge(
@@ -131,7 +132,13 @@ def test_egress_log_marks_hosts_as_mocked(model, out):
     assert model.node("host:api.stripe.com").attrs["egress"] == {"mocked": 2}
 
 
-def test_functions_never_executed(model, out):
+def test_functions_never_executed_only_count_components_that_ran(model, out):
+    model.add_node("component:notifier", "component")
+    model.add_node("file:notifier/src/email.ts", "file", component="notifier")
+    model.add_node(
+        "function:notifier/src/email.ts:sendEmail", "function", file="notifier/src/email.ts"
+    )
+
     ingest(model, out, RUN)
 
     assert model.node("function:api/app/main.py:list_products").attrs["executed"] == 2
